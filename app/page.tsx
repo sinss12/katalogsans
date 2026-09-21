@@ -44,6 +44,21 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGame, setSelectedGame] = useState<any | null>(null);
 
+  // --- STATE BARU: MOBILE MENU ---
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileCategoriesOpen, setIsMobileCategoriesOpen] = useState(false);
+  // Deteksi lebar layar pakai JS langsung (gak bergantung pada class Tailwind sama sekali),
+  // supaya hamburger dijamin cuma muncul kalau lebar layar beneran di bawah 768px.
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mql.matches);
+    const handleChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handleChange);
+    return () => mql.removeEventListener('change', handleChange);
+  }, []);
+
   const alphabets = ['0-9', ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i))];
 
   // --- KOMPONEN BINTANG ---
@@ -72,10 +87,6 @@ export default function Home() {
   useEffect(() => {
     let isMounted = true;
 
-    // Fetch SEMUA baris dataset_raw dengan pagination, karena Supabase membatasi
-    // hasil query ke 1000 baris per request secara default. Tanpa ini, data yang
-    // idnya berada di luar batas tersebut tidak akan pernah muncul di katalog,
-    // dan daftar genre yang muncul bisa berbeda dengan halaman admin.
     async function fetchData() {
       try {
         let allGames: any[] = [];
@@ -110,7 +121,6 @@ export default function Home() {
         const gamesData = allGames;
 
         if (isMounted && gamesData) {
-          // Disamakan dengan logic admin: sorted, dari genre_name, filter yang kosong
           const uniqueGenres = Array.from(
             new Set(gamesData.map((g: any) => g.genre_name).filter(Boolean))
           ).sort() as string[];
@@ -122,7 +132,6 @@ export default function Home() {
             const overrideFromJson = (manualCovers as Record<string, string>)[game.title];
             const gameRating = parseFloat(game.rating) || 5.0;
 
-            // Prioritas: 1) cover yang udah diedit manual di Supabase, 2) override dari manualCovers.json, 3) placeholder text otomatis
             const finalImageUrl = isManuallySetInDb
               ? game.image_url
               : (overrideFromJson || dynamicCover);
@@ -245,7 +254,109 @@ export default function Home() {
               )}
             </div>
           </div>
+
+          {/* TOMBOL HAMBURGER — di-render kondisional pakai state isMobile (dari matchMedia),
+              JADI GAK ADA DI DOM SAMA SEKALI kalau layar >= 768px, gak peduli Tailwind purge/cache */}
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-slate-700 text-slate-300 hover:bg-slate-800 transition-colors"
+              aria-label="Buka menu navigasi"
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
+
+        {/* PANEL NAVIGASI MOBILE — sama, di-render kondisional pakai isMobile, gak pernah nongol di desktop */}
+        {isMobile && isMobileMenuOpen && (
+          <div className="border-t border-slate-800 bg-slate-900 px-6 py-4 flex flex-col gap-1 text-sm font-medium text-slate-400">
+            <button
+              onClick={() => {
+                setSortMode('default');
+                setSelectedGenre('Semua');
+                setSelectedLetter(null);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`text-left py-2.5 px-2 rounded-md hover:bg-slate-800 transition-colors ${sortMode === 'default' ? 'text-slate-100 bg-slate-800/60' : ''}`}
+            >
+              Home
+            </button>
+
+            <button
+              onClick={() => setIsMobileCategoriesOpen(!isMobileCategoriesOpen)}
+              className="text-left py-2.5 px-2 rounded-md hover:bg-slate-800 transition-colors flex items-center justify-between"
+            >
+              Categories
+              <span className={`transition-transform ${isMobileCategoriesOpen ? 'rotate-180' : ''}`}>▾</span>
+            </button>
+            {isMobileCategoriesOpen && (
+              <div className="ml-2 pl-3 border-l border-slate-800 flex flex-col max-h-[240px] overflow-y-auto">
+                <button
+                  onClick={() => {
+                    setSelectedGenre('Semua');
+                    setSortMode('default');
+                    setSelectedLetter(null);
+                    setIsMobileCategoriesOpen(false);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="text-left py-2 px-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 rounded-md"
+                >
+                  SEMUA
+                </button>
+                {genres.map((gName, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setSelectedGenre(gName);
+                      setSortMode('default');
+                      setSelectedLetter(null);
+                      setIsMobileCategoriesOpen(false);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="text-left py-2 px-2 text-xs uppercase text-slate-500 hover:bg-slate-800 rounded-md"
+                  >
+                    {gName}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button
+              onClick={() => {
+                setSortMode('trending');
+                setSelectedGenre('Semua');
+                setSelectedLetter(null);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`text-left py-2.5 px-2 rounded-md hover:bg-slate-800 transition-colors ${sortMode === 'trending' ? 'text-slate-100 bg-slate-800/60' : ''}`}
+            >
+              Top Games
+            </button>
+            <button
+              onClick={() => {
+                setSortMode('az');
+                setSelectedLetter(null);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`text-left py-2.5 px-2 rounded-md hover:bg-slate-800 transition-colors ${sortMode === 'az' ? 'text-slate-100 bg-slate-800/60' : ''}`}
+            >
+              Game List
+            </button>
+          </div>
+        )}
       </header>
 
       {/* HERO SECTION */}
@@ -306,7 +417,6 @@ export default function Home() {
                 onClick={() => setSelectedGame(game)}
                 className="group bg-slate-900 border border-slate-800 rounded-lg overflow-hidden hover:border-slate-600 transition-all duration-300 shadow-sm transform hover:-translate-y-1 cursor-pointer"
               >
-                {/* Bagian Gambar + Badge */}
                 <div className="h-48 relative overflow-hidden bg-slate-950 flex flex-col justify-between p-3">
                   <img
                     src={game.imageUrl}
@@ -325,7 +435,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Bagian Informasi Teks */}
                 <div className="p-4 flex flex-col h-[140px]">
                   <h3 className="font-semibold text-base mb-1 truncate text-slate-200 group-hover:text-slate-100 transition-colors">
                     {game.title}
