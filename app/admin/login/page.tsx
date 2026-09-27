@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminLoginPage() {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +17,7 @@ export default function AdminLoginPage() {
     const res = await fetch('/api/admin/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
 
     setIsLoading(false);
@@ -25,15 +26,29 @@ export default function AdminLoginPage() {
       router.push('/admin');
       router.refresh();
     } else {
-      setError('Password salah, coba lagi bro');
+      setError('Username atau password salah, coba lagi bro');
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
-      <form onSubmit={handleLogin} className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl">
+      <form
+        onSubmit={handleLogin}
+        className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-xl"
+        style={{ maxWidth: '384px' }}
+      >
         <h1 className="text-lg font-bold text-slate-100 mb-1">Admin Login</h1>
         <p className="text-xs text-slate-500 mb-6">Masuk untuk mengakses Central Control Panel</p>
+
+        <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Username</label>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full p-3 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-200 focus:outline-none focus:border-slate-500 mb-4"
+          placeholder="admin"
+          required
+        />
 
         <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
         <input
